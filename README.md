@@ -24,11 +24,11 @@ export PATH=$HADOOP_HOME/bin:$SPARK_HOME/bin:$PATH
 export PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.10.6-src.zip:$PYTHONPATH
 ```
 
-##  Apply Spark to analyze AWS BIN IMAGE DATASETS 
+##  Apply Spark to analyze AMAZON BIN IMAGE DATASETS 
 
-AWS BIN Image Dataset is located at S3: https://aws.amazon.com/public-datasets/amazon-bin-images/
-
-The following command applies some ETL and SQL to extract and transform datasets into a subdataset saved in TensorFlow Record format on my S3 bucket.   
+AMAZON BIN Image Dataset is located at S3 bucket aft-vbi-pds (https://aws.amazon.com/public-datasets/amazon-bin-images/).
+We apply [ds_select.py](https://github.com/anfeng/py-demo/blob/master/ds_select.py) to use PySpark API to  
+extract, query and transform datasets, and finally save the result subdataset in TensorFlow Record format on my S3 bucket.   
 
 ```
 spark-submit --jars $HADOOP_HOME/share/hadoop/tools/lib/hadoop-aws-2.7.5.jar, \
