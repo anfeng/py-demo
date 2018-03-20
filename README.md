@@ -27,7 +27,7 @@ export PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.10.6-src.zip:
 ##  Apply Spark to analyze AMAZON BIN IMAGE DATASETS 
 
 AMAZON BIN Image Dataset is located at S3 bucket aft-vbi-pds (https://aws.amazon.com/public-datasets/amazon-bin-images/).
-We apply [ds_select.py](https://github.com/anfeng/py-demo/blob/master/ds_select.py) to use PySpark API to  
+We apply [ds_select.py](https://github.com/anfeng/py-demo/blob/master/py2tf/ds_select.py) to use PySpark API to  
 extract, query and transform datasets, and finally save the result subdataset in TensorFlow Record format on my S3 bucket.   
 
 ```
@@ -53,4 +53,12 @@ The log will include the following section about the newly created dataset.
 |1629054755|Horses Wall Calen...|  IN|     0.42913385783|  IN| 13.38188975013|pounds|    0.6999897280762|       2|
 |B00T3ROXI6|AmazonBasics Clea...|  IN|    1.249999998725|  IN| 11.49999998827|pounds| 1.6499999986163254|       3|
 +----------+--------------------+----+------------------+----+---------------+------+-------------------+--------+
+```
+
+## Python Packaging
+
+```
+rm -r dist/*
+python setup.py sdist bdist_wheel 
+twine upload dist/*
 ```
