@@ -1,13 +1,14 @@
 #!/usr/bin/python
 
+import os
 import uuid
 import sys
 import boto3
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit
 
-def mkDataFrame(spark): 
-  s3 = boto3.resource('s3')
+def mkDataFrame(spark, boto3_session): 
+  s3 = boto3_session.resource('s3')
   bucket = s3.Bucket('aft-vbi-pds') 
   rdd = None
   for obj in bucket.objects.filter(Prefix='metadata/10000'):
@@ -21,14 +22,28 @@ def mkDataFrame(spark):
          rdd = rdd.union(sub_rdd).cache()     
   return spark.createDataFrame(rdd)
 
+bukcet = sys.argv[1]
+if len(sys.argv)>=5:
+  aws_region =  sys.argv[2]
+  aws_access_key = sys.argv[3]
+  aws_screte_key = sys.argv[4]
+else:
+  aws_region = os.environ['AWS_REGION']
+  aws_access_key = os.environ['AWS_ACCESS_KEY_ID']
+  aws_screte_key = os.environ['AWS_SECRET_ACCESS_KEY']
+
+# set up Spark sessiom
 spark = SparkSession.builder.appName("PySpark-TF example") \
   .config("spark.hadoop.fs.s3n.impl", "org.apache.hadoop.fs.s3native.NativeS3FileSystem") \
-  .config("spark.hadoop.fs.s3.impl", "org.apache.hadoop.fs.s3.S3FileSystem") \
-  .config("spark.hadoop.fs.s3a.readahead.range", "512M") \
+  .config("spark.hadoop.fs.s3n.readahead.range", "512M") \
+  .config("spark.hadoop.fs.s3n.awsAccessKeyId", aws_access_key) \
+  .config("spark.hadoop.fs.s3n.awsSecretAccessKey", aws_screte_key) \
   .getOrCreate()
+spark.sparkContext.setLogLevel("WARN")
 
 # Acceess an existing dataset
-df = mkDataFrame(spark)
+boto3_session = boto3.session.Session(region_name=aws_region, aws_access_key_id=aws_access_key, aws_secret_access_key=aws_screte_key)
+df = mkDataFrame(spark, boto3_session)
 df.show()
 
 # perform a SQL based datas selection & transformation
@@ -37,5 +52,5 @@ new_data_set=spark.sql("SELECT asin, name, height.unit, height.value, length.uni
 new_data_set.show()
 
 # Save selected/transformed dataset as TensorFlow Record format
-bukcet = sys.argv[1]
-new_data_set.repartition(2).write.format("tfrecords").save('s3n://'+sys.argv[1]+'/aft-vbi-pds-tfrecords/'+uuid.uuid1().hex)
+new_data_set.repartition(2).write.format("tfrecords") \
+            .save('s3n://'+bukcet+'/aft-vbi-pds-tfrecords/'+uuid.uuid1().hex)

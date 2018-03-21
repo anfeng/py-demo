@@ -2,28 +2,6 @@
 
 This prototype illustrates how to use Spark and TensorFlow in Python
 
-##  BUILD TF/SPARK CONNECTOR
-
-```
-git clone https://github.com/tensorflow/ecosystem.git tf-ecosystem
-pushd tf-ecosystem/hadoop
-mvn clean install
-popd
-pushd tf-ecosystem/spark/spark-tensorflow-connector
-mvn clean install
-popd
-```
-
-##  SET UP ENVIRONMENT
-
-```
-export HADOOP_HOME=/Users/andyfeng/dev/hadoop-2.7.5
-export SPARK_HOME=/Users/andyfeng/dev/spark-on-k8s 
-export TF_SPARK_CONNECTOR=/Users/andyfeng/dev/tf-ecosystem/spark/spark-tensorflow-connector
-export PATH=$HADOOP_HOME/bin:$SPARK_HOME/bin:$PATH 
-export PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.10.6-src.zip:$PYTHONPATH
-```
-
 ##  Apply Spark to analyze AMAZON BIN IMAGE DATASETS 
 
 AMAZON BIN Image Dataset is located at S3 bucket aft-vbi-pds (https://aws.amazon.com/public-datasets/amazon-bin-images/).
@@ -31,10 +9,17 @@ We apply [ds_select.py](https://github.com/anfeng/py-demo/blob/master/py2tf/ds_s
 extract, query and transform datasets, and finally save the result subdataset in TensorFlow Record format on my S3 bucket.   
 
 ```
-spark-submit --jars $HADOOP_HOME/share/hadoop/tools/lib/hadoop-aws-2.7.5.jar, \
-    $HADOOP_HOME/share/hadoop/tools/lib/aws-java-sdk-1.7.4.jar, \
-    $TF_SPARK_CONNECTOR/target/spark-tensorflow-connector_2.11-1.6.0.jar \ 
-    ds_select.py tfsp-andyf
+rm -r dist/*
+python setup.py sdist bdist_wheel 
+twine upload dist/*
+```
+
+```
+pip install pysp2tfdemo
+
+export PYSP2TF=/usr/local/lib/python2.7/site-packages/py2tf
+
+${SPARK_HOME}/bin/spark-submit --jars $PYSP2TF/jars/hadoop-aws-2.7.5.jar,$PYSP2TF/jars/aws-java-sdk-1.7.4.jar,$PYSP2TF/jars/spark-tensorflow-connector_2.11-1.6.0.jar $PYSP2TF/ds_select.py tfsp-andyf
 ```
 
 The log will include the following section about the newly created dataset.
@@ -55,10 +40,41 @@ The log will include the following section about the newly created dataset.
 +----------+--------------------+----+------------------+----+---------------+------+-------------------+--------+
 ```
 
-## Python Packaging
+## Create Docker Image
 
 ```
-rm -r dist/*
-python setup.py sdist bdist_wheel 
-twine upload dist/*
+cp dockerfiles/Dockerfile ${SPARK_HOME}
+pushd ${SPARK_HOME}
+docker build . -f Dockerfile -t afeng95014/pysp2tf-demo:0.11
+docker push afeng95014/pysp2tf-demo:0.11
+popd
+
+minikube --memory 4096 --cpus 3 start
+export K8S_MASTER=https://192.168.99.100:8443
+
+export PYSP2TF=local:///usr/lib/python2.7/site-packages/py2tf
+export PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.10.6-src.zip:$PYTHONPATH
+
+${SPARK_HOME}/bin/spark-submit \
+--deploy-mode cluster \
+--kubernetes-namespace default \
+--master k8s://${K8S_MASTER} \
+--conf spark.executor.instances=1 \
+--conf spark.app.name=pyspark-tf-demo \
+--conf spark.kubernetes.driver.docker.image=afeng95014/pysp2tf-demo:0.11 \
+--conf spark.kubernetes.executor.docker.image=kubespark/spark-executor-py:v2.2.0-kubernetes-0.5.0 \
+--jars $PYSP2TF/jars/hadoop-aws-2.7.5.jar \
+--jars $PYSP2TF/jars/aws-java-sdk-1.7.4.jar \
+--jars $PYSP2TF/jars/spark-tensorflow-connector_2.11-1.6.0.jar \
+$PYSP2TF/ds_select.py tfsp-andyf $AWS_REGION $AWS_ACCESS_KEY_ID $AWS_SECRET_ACCESS_KEY
+
+
+kubectl get pods
+
+kubectl -n=default logs -f 
+
+minikube stop 
+minikube delete
 ```
+
+

@@ -1,8 +1,8 @@
 from setuptools import setup
 
 setup(
-  name = 'pysp2tf_demo',
-  version = '0.4',
+  name = 'pysp2tfdemo',
+  version = '0.1',
   description = 'PySpark and TF demo',
   author = 'Andy Feng',
   author_email = 'andy.feng@gmail.com',
@@ -11,7 +11,6 @@ setup(
   packages = ['py2tf', 'py2tf.jars'],
   package_data={'py2tf.jars': ['*.jar']},
   include_package_data=True, 
-  install_requires = ['pyspark'],
   license = 'Apache 2.0',
   classifiers = [
     'Development Status :: 4 - Beta',
