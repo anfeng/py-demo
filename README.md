@@ -13,7 +13,9 @@ pip install pysp2tfdemo
 
 export PYSP2TF=/usr/local/lib/python2.7/site-packages/py2tf
 
-${SPARK_HOME}/bin/spark-submit --jars $PYSP2TF/jars/hadoop-aws-2.7.5.jar,$PYSP2TF/jars/aws-java-sdk-1.7.4.jar,$PYSP2TF/jars/spark-tensorflow-connector_2.11-1.6.0.jar $PYSP2TF/ds_select.py tfsp-andyf
+${SPARK_HOME}/bin/spark-submit \
+    --jars $PYSP2TF/jars/hadoop-aws-2.7.5.jar,$PYSP2TF/jars/aws-java-sdk-1.7.4.jar,$PYSP2TF/jars/spark-tensorflow-connector_2.11-1.6.0.jar \
+    $PYSP2TF/ds_select.py tfsp-andyf
 ```
 
 The log will include the following section about the newly created dataset.
