@@ -1,18 +1,12 @@
-## INTRODUCTION
+This prototype illustrates how to use PySpark and TensorFlow together in K8S. 
 
-This prototype illustrates how to use Spark and TensorFlow in Python
-
-##  Apply Spark to analyze AMAZON BIN IMAGE DATASETS 
+##  Apply PySpark to analyze datasets locally
 
 AMAZON BIN Image Dataset is located at S3 bucket aft-vbi-pds (https://aws.amazon.com/public-datasets/amazon-bin-images/).
 We apply [ds_select.py](https://github.com/anfeng/py-demo/blob/master/py2tf/ds_select.py) to use PySpark API to  
 extract, query and transform datasets, and finally save the result subdataset in TensorFlow Record format on my S3 bucket.   
 
-```
-rm -r dist/*
-python setup.py sdist bdist_wheel 
-twine upload dist/*
-```
+You could use my pip package pysp2tfdemo with PySpark as below. 
 
 ```
 pip install pysp2tfdemo
@@ -40,17 +34,28 @@ The log will include the following section about the newly created dataset.
 +----------+--------------------+----+------------------+----+---------------+------+-------------------+--------+
 ```
 
-## Create Docker Image
+Here is how pysp2tfdemo pip package was created. 
+```
+rm -r dist/*
+python setup.py sdist bdist_wheel 
+twine upload dist/*
+```
+
+## Apply PySpark to analyze datasets with K8S cluster
+
+Recent community effort has enabled PySpark to be launched on k8s cluster. You could apply the following step to build it. 
 
 ```
-cp dockerfiles/Dockerfile ${SPARK_HOME}
-pushd ${SPARK_HOME}
-docker build . -f Dockerfile -t afeng95014/pysp2tf-demo:0.11
-docker push afeng95014/pysp2tf-demo:0.11
-popd
+git clone https://github.com/apache-spark-on-k8s/spark.git spark-k8s
+pushd spark-k8s
+build/mvn -Pkubernetes -DskipTests clean package
+```
 
-minikube --memory 4096 --cpus 3 start
-export K8S_MASTER=https://192.168.99.100:8443
+We will use the k8s enabled Spark as SPARK_HOME, and apply a docker image "afeng95014/pysp2tfdemo:0.1" as our demo app.
+The following commands demonstrate how Spark could be used in k8s cluster to access s3 dataset. It's very similar to our local deployment in previous section. You should see the identical result.
+```
+export SPARK_HOME=....
+export K8S_MASTER=...
 
 export PYSP2TF=local:///usr/lib/python2.7/site-packages/py2tf
 export PYTHONPATH=$SPARK_HOME/python:$SPARK_HOME/python/lib/py4j-0.10.6-src.zip:$PYTHONPATH
@@ -61,20 +66,23 @@ ${SPARK_HOME}/bin/spark-submit \
 --master k8s://${K8S_MASTER} \
 --conf spark.executor.instances=1 \
 --conf spark.app.name=pyspark-tf-demo \
---conf spark.kubernetes.driver.docker.image=afeng95014/pysp2tf-demo:0.11 \
+--conf spark.kubernetes.driver.docker.image=afeng95014/pysp2tfdemo:0.1 \
 --conf spark.kubernetes.executor.docker.image=kubespark/spark-executor-py:v2.2.0-kubernetes-0.5.0 \
---jars $PYSP2TF/jars/hadoop-aws-2.7.5.jar \
---jars $PYSP2TF/jars/aws-java-sdk-1.7.4.jar \
---jars $PYSP2TF/jars/spark-tensorflow-connector_2.11-1.6.0.jar \
+--jars $PYSP2TF/jars/hadoop-aws-2.7.5.jar,$PYSP2TF/jars/aws-java-sdk-1.7.4.jar,$PYSP2TF/jars/spark-tensorflow-connector_2.11-1.6.0.jar \
 $PYSP2TF/ds_select.py tfsp-andyf $AWS_REGION $AWS_ACCESS_KEY_ID $AWS_SECRET_ACCESS_KEY
-
-
-kubectl get pods
-
-kubectl -n=default logs -f 
-
-minikube stop 
-minikube delete
 ```
 
+You could access application's driver log via kubectl logs with your POD, ex
+```
+kubectl -n=default logs -f pyspark-tf-demo-1521653814399-driver
+```
+
+Docker image "afeng95014/pysp2tfdemo:0.1" was created and published as below.
+```
+cp dockerfiles/Dockerfile ${SPARK_HOME}
+pushd ${SPARK_HOME}
+docker build . -f Dockerfile -t afeng95014/pysp2tfdemo:0.1
+docker push afeng95014/pysp2tfdemo:0.1
+popd
+```
 
